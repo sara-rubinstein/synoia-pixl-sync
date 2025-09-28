@@ -65,9 +65,57 @@ export function ImageLibraryManager() {
       title: "Files Selected",
       description: `${files.length} file(s) ready for upload. Global ID assignment would happen here.`,
     });
+    setNewImages(files);
     setShowUpload(false);
   };
+const setNewImages=(files: File[])=>{
+// Process each file and create ImageItem objects
+  const newImages = files.map((file, index) => {
+    // Generate a unique global ID (you might want to use a proper UUID library)
+    const globalId = Math.max(...images.map(img => img.globalId), 0) + index + 1;
+    
+    // Create object URL for preview and thumbnail
+    const previewUrl = URL.createObjectURL(file);
+    
+    // Extract file info
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    const category = determineCategory(file.name, fileExtension); // Helper function
+    const currentDate = new Date().toISOString();
+    
+    // Check if image has alpha channel (basic check)
+    const hasAlpha = ['png', 'gif', 'webp'].includes(fileExtension);
+    
+    return {
+      globalId,
+      name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension from display name
+      description: `Uploaded ${new Date().toLocaleDateString()}`,
+      originalPath: `/uploads/${file.name}`,
+      libraryFilePath: `/library/${globalId}/${file.name}`,
+      //category,
+      //subcategory: determineSubcategory(file.name, category), // Helper function
+      tags: [category, 'uploaded'],
+      imageWidth: 0, // Will be updated after image loads
+      imageHeight: 0, // Will be updated after image loads
+      hasAlphaChannel: hasAlpha,
+      azureBlobUrl: undefined, // Will be set after cloud sync
+      cdnUrl: undefined, // Will be set after cloud sync
+      localLastUpdatedUtc: currentDate,
+      cloudLastUpdatedUtc: undefined, // Will be set after cloud sync
+      createdDate: currentDate,
+      isDeleted: false,
+      isActive: true,
+      syncStatus: 'pending' as const, // New uploads start as pending
+      fileSize: file.size,
+      fileType: file.type || `image/${fileExtension}`,
+      thumbnailUrl: previewUrl // Using same URL for thumbnail initially
+    } satisfies ImageItem; // Use satisfies instead of as for better type checking
+  });
 
+  // Add new images to the state
+  setImages(prev => [...newImages, ...prev]); // Add new images at the beginning
+
+
+};
   // Handle delete/restore
   const handleDelete = (id: number) => {
     setImages(prev => prev.map(img => 
@@ -97,6 +145,21 @@ export function ImageLibraryManager() {
     });
   };
 
+  // Helper function to determine category based on filename/type
+const determineCategory = (filename: string, extension: string): string => {
+  const name = filename.toLowerCase();
+  
+  if (name.includes('logo') || name.includes('brand')) return '"product"';
+  if (name.includes('ui') || name.includes('interface') || name.includes('button')) return '"product"';
+  if (name.includes('product') || name.includes('hero')) return '"product"';
+  if (name.includes('tutorial') || name.includes('step') || name.includes('guide')) return '"product"';
+  
+  // Default category based on file type
+  if (['jpg', 'jpeg', 'png', 'webp'].includes(extension)) return '"product"';
+  if (['svg','ico'].includes(extension)) return '"product"';
+  
+  return '"product"'; // default
+};
   const categories = ['all', 'product', 'ui', 'branding', 'tutorial'];
   const statuses = ['all', 'up-to-date', 'pending', 'conflict'];
 

@@ -18,7 +18,7 @@ export function UploadArea({ onFilesSelected }: UploadAreaProps) {
   const { getRootProps, getInputProps, isDragReject } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp','.ico']
     },
     onDragEnter: () => setIsDragActive(true),
     onDragLeave: () => setIsDragActive(false)
