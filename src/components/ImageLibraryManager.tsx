@@ -61,9 +61,41 @@ export function ImageLibraryManager() {
 
   // Handle file upload
   const handleFilesSelected = (files: File[]) => {
+    const newImages: ImageItem[] = files.map(file => {
+      // Generate mock Global ID (in real app, this would come from Azure Function)
+      const globalId = Math.floor(Math.random() * 1000000) + 100000;
+      const objectUrl = URL.createObjectURL(file);
+      
+      return {
+        globalId,
+        name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension for name
+        description: `Uploaded ${file.type}`,
+        originalPath: file.name,
+        libraryFilePath: `library/${globalId}.${file.name.split('.').pop()}`,
+        category: 'product',
+        subcategory: null,
+        tags: ['uploaded'],
+        imageWidth: 1920, // Would be read from actual file
+        imageHeight: 1080,
+        hasAlphaChannel: file.type === 'image/png',
+        azureBlobUrl: null,
+        cdnUrl: objectUrl,
+        localLastUpdatedUtc: new Date().toISOString(),
+        cloudLastUpdatedUtc: null,
+        createdDate: new Date().toISOString(),
+        isDeleted: false,
+        isActive: true,
+        syncStatus: 'pending' as const,
+        fileSize: file.size,
+        fileType: file.type,
+        thumbnailUrl: objectUrl
+      };
+    });
+
+    setImages(prev => [...newImages, ...prev]);
     toast({
-      title: "Files Selected",
-      description: `${files.length} file(s) ready for upload. Global ID assignment would happen here.`,
+      title: "Images Added",
+      description: `${files.length} image(s) added to library with Global IDs.`,
     });
     setNewImages(files);
     setShowUpload(false);
