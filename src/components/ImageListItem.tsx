@@ -1,17 +1,21 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "./StatusBadge";
-import { Trash2, RotateCcw, ExternalLink, FileText } from "lucide-react";
+import { Trash2, RotateCcw, ExternalLink, FileText, Edit2 } from "lucide-react";
 import { ImageItem } from "@/types/image-library";
+import { ImageEditDialog } from "./ImageEditDialog";
 
 interface ImageListItemProps {
   image: ImageItem;
   onDelete: (id: number) => void;
   onRestore: (id: number) => void;
+  onEdit: (id: number, description: string, tags: string[]) => void;
 }
 
-export function ImageListItem({ image, onDelete, onRestore }: ImageListItemProps) {
+export function ImageListItem({ image, onDelete, onRestore, onEdit }: ImageListItemProps) {
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -107,6 +111,14 @@ export function ImageListItem({ image, onDelete, onRestore }: ImageListItemProps
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
                     <FileText className="w-3 h-3" />
                   </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => setEditDialogOpen(true)}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </Button>
                   
                   {image.isDeleted ? (
                     <Button 
@@ -134,6 +146,13 @@ export function ImageListItem({ image, onDelete, onRestore }: ImageListItemProps
           </div>
         </div>
       </CardContent>
+
+      <ImageEditDialog
+        image={image}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSave={onEdit}
+      />
     </Card>
   );
 }

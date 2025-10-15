@@ -169,6 +169,16 @@ const setNewImages=(files: File[])=>{
     });
   };
 
+  const handleEdit = (id: number, description: string, tags: string[]) => {
+    setImages(prev => prev.map(img => 
+      img.globalId === id ? { ...img, description, tags } : img
+    ));
+    toast({
+      title: "Image Updated",
+      description: "Image details have been saved.",
+    });
+  };
+
   // Handle sync
   const handleSync = () => {
     toast({
@@ -351,6 +361,7 @@ const determineCategory = (filename: string, extension: string): string => {
                     image={image}
                     onDelete={handleDelete}
                     onRestore={handleRestore}
+                    onEdit={handleEdit}
                   />
                 ))}
               </div>
@@ -365,6 +376,7 @@ const determineCategory = (filename: string, extension: string): string => {
                     image={image}
                     onDelete={handleDelete}
                     onRestore={handleRestore}
+                    onEdit={handleEdit}
                   />
                 ))}
               </div>
@@ -393,6 +405,7 @@ const determineCategory = (filename: string, extension: string): string => {
                         image={image}
                         onDelete={handleDelete}
                         onRestore={handleRestore}
+                        onEdit={handleEdit}
                       />
                     ))}
                   </TableBody>
