@@ -21,6 +21,13 @@ export interface ImageItem {
   fileSize?: number;
   fileType: string;
   thumbnailUrl: string;
+   // Enhanced sync metadata
+  appMetadata: AppMetadata;
+  localStorageId?: string; // SQL Server record ID
+  lastSyncAttempt?: string;
+  syncError?: string;
+  file?: File; // <-- Add this line
+
 }
 
 export type DisplayMode = 'grid' | 'list' | 'table';
@@ -31,4 +38,21 @@ export interface ImagePlacement {
   targetStakeholder?: string;
   platformTarget?: string;
   productType?: string;
+}
+
+export interface AppMetadata {
+  app: string; // APP1, APP2, etc.
+  usageCode: string;
+  lang: 'EN' | 'HE' | 'CN' | string;
+  customTags: string[];
+  targetPlatforms?: string[];
+  version?: string;
+}
+
+export interface SyncRequest {
+  imageId: number;
+  imageBlob: Blob;
+  metadata: AppMetadata;
+  fileName: string;
+  contentType: string;
 }

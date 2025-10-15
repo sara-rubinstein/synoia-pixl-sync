@@ -61,38 +61,7 @@ export function ImageLibraryManager() {
 
   // Handle file upload
   const handleFilesSelected = (files: File[]) => {
-    const newImages: ImageItem[] = files.map(file => {
-      // Generate mock Global ID (in real app, this would come from Azure Function)
-      const globalId = Math.floor(Math.random() * 1000000) + 100000;
-      const objectUrl = URL.createObjectURL(file);
-      
-      return {
-        globalId,
-        name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension for name
-        description: `Uploaded ${file.type}`,
-        originalPath: file.name,
-        libraryFilePath: `library/${globalId}.${file.name.split('.').pop()}`,
-        category: 'product',
-        subcategory: null,
-        tags: ['uploaded'],
-        imageWidth: 1920, // Would be read from actual file
-        imageHeight: 1080,
-        hasAlphaChannel: file.type === 'image/png',
-        azureBlobUrl: null,
-        cdnUrl: objectUrl,
-        localLastUpdatedUtc: new Date().toISOString(),
-        cloudLastUpdatedUtc: null,
-        createdDate: new Date().toISOString(),
-        isDeleted: false,
-        isActive: true,
-        syncStatus: 'pending' as const,
-        fileSize: file.size,
-        fileType: file.type,
-        thumbnailUrl: objectUrl
-      };
-    });
 
-    setImages(prev => [...newImages, ...prev]);
     toast({
       title: "Images Added",
       description: `${files.length} image(s) added to library with Global IDs.`,
@@ -104,16 +73,24 @@ const setNewImages=(files: File[])=>{
 // Process each file and create ImageItem objects
   const newImages = files.map((file, index) => {
     // Generate a unique global ID (you might want to use a proper UUID library)
-    const globalId = Math.max(...images.map(img => img.globalId), 0) + index + 1;
-    
+   // Generate unique temporary negative IDs to avoid conflicts
+    const globalId = -(Date.now() + index);
     // Create object URL for preview and thumbnail
     const previewUrl = URL.createObjectURL(file);
     
     // Extract file info
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    const category = determineCategory(file.name, fileExtension); // Helper function
+    const category = 'product';//determineCategory(file.name, fileExtension); // Helper function
     const currentDate = new Date().toISOString();
-    
+    // Default metadata structure
+      const defaultMetadata = {
+        app: 'APP1', // Default app
+        usageCode: "Main",
+        lang: 'EN',
+        customTags: [category, 'uploaded'],
+        targetPlatforms: ['web'],
+        version: '1.0'
+      };
     // Check if image has alpha channel (basic check)
     const hasAlpha = ['png', 'gif', 'webp'].includes(fileExtension);
     
@@ -121,13 +98,14 @@ const setNewImages=(files: File[])=>{
       globalId,
       name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension from display name
       description: `Uploaded ${new Date().toLocaleDateString()}`,
-      originalPath: `/uploads/${file.name}`,
-      libraryFilePath: `/library/${globalId}/${file.name}`,
-      //category,
+      // Store whatever information is available from the File object
+      originalPath: file.name,  // Just the filename - this is all you can get
+      libraryFilePath: `/library/${file.name}`, // Will be set after cloud sync
+      category,
       //subcategory: determineSubcategory(file.name, category), // Helper function
       tags: [category, 'uploaded'],
-      imageWidth: 0, // Will be updated after image loads
-      imageHeight: 0, // Will be updated after image loads
+      imageWidth: (file as any).size?.width ?? 0, // Will be updated after image loads
+      imageHeight: (file as any).size?.height ?? 0, // Will be updated after image loads
       hasAlphaChannel: hasAlpha,
       azureBlobUrl: undefined, // Will be set after cloud sync
       cdnUrl: undefined, // Will be set after cloud sync
@@ -139,7 +117,9 @@ const setNewImages=(files: File[])=>{
       syncStatus: 'pending' as const, // New uploads start as pending
       fileSize: file.size,
       fileType: file.type || `image/${fileExtension}`,
-      thumbnailUrl: previewUrl // Using same URL for thumbnail initially
+      thumbnailUrl: previewUrl ,// Using same URL for thumbnail initially
+      appMetadata:defaultMetadata,
+      file:file
     } satisfies ImageItem; // Use satisfies instead of as for better type checking
   });
 
@@ -170,27 +150,121 @@ const setNewImages=(files: File[])=>{
   };
 
   // Handle sync
-  const handleSync = () => {
-    toast({
-      title: "Sync Started",
-      description: "Checking for updates and uploading pending changes...",
-    });
-  };
+  const handleSync = async () => {
+  const imagesToSync = images.filter(img => img.syncStatus === 'pending' && !img.isDeleted);
 
+  if (imagesToSync.length === 0) {
+    toast({
+      title: "No Images to Sync",
+      description: "All images are up to date.",
+    });
+    return;
+  }
+  
+  try {
+    const azurelocalhostEndpoint = "http://localhost:7071/api/sync-image";
+    
+    // Upload images sequentially to ensure unique GlobalIds
+    const results = [];
+    
+    for (const img of imagesToSync) {
+      if (!img.file) {
+        throw new Error(`No file found for image ${img.globalId}`);
+      }
+      
+      const formData = new FormData();
+      formData.append("file", img.file, img.file.name);
+      formData.append(
+        "metadata",
+        JSON.stringify({
+          Name: img.name,
+          OriginalPath: img.originalPath,
+          LibraryFilePath: img.libraryFilePath,
+          Category: img.category,
+          Tags: img.tags,
+          ImageWidth: img.imageWidth,
+          ImageHeight: img.imageHeight,
+          HasAlphaChannel: img.hasAlphaChannel,
+          LocalLastUpdatedUtc: img.localLastUpdatedUtc,
+          CreatedDate: img.createdDate,
+          IsDeleted: img.isDeleted,
+          IsActive: img.isActive,
+          FileSize: img.fileSize,
+          FileType: img.fileType,
+          AppMetadata: img.appMetadata,
+          Description: img.description
+        })
+      );
+
+      console.log(`Uploading image: ${img.name}`);
+      
+      const response = await fetch(azurelocalhostEndpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const msg = await response.text().catch(() => "");
+        throw new Error(`Failed to sync image ${img.name}. ${response.status} ${msg}`);
+      }
+
+      const result = await response.json();
+      console.log(`Received result for ${img.name}:`, result);
+      
+      results.push({
+        fileName: img.name,  // ✅ Use file name as unique identifier
+        oldGlobalId: img.globalId,
+        newGlobalId: result.metadata.GlobalId,
+        azureBlobUrl: result.metadata.AzureBlobUrl,
+        cloudLastUpdatedUtc: result.metadata.CloudLastUpdatedUtc
+      });
+    }
+    console.log('All results:', results);
+
+    // Update all images with their new GlobalIds and blob URLs
+    setImages(prev =>
+      prev.map(img => {
+        const result = results.find(r => r.oldGlobalId === img.globalId);
+        if (result) {
+          return {
+            ...img,
+            globalId: result.newGlobalId,
+            azureBlobUrl: result.azureBlobUrl,
+            cloudLastUpdatedUtc: result.cloudLastUpdatedUtc,
+            syncStatus: "up-to-date" as const
+          };
+        }
+        return img;
+      })
+    );
+
+    toast({
+      title: "Sync Complete",
+      description: `${imagesToSync.length} image(s) synced successfully.`,
+    });
+  } catch (error) {
+    console.error('Sync error:', error);
+    toast({
+      title: "Sync Failed",
+      description: (error as Error).message,
+      variant: "destructive"
+    });
+  }
+};
   // Helper function to determine category based on filename/type
 const determineCategory = (filename: string, extension: string): string => {
   const name = filename.toLowerCase();
-  
-  if (name.includes('logo') || name.includes('brand')) return '"product"';
-  if (name.includes('ui') || name.includes('interface') || name.includes('button')) return '"product"';
-  if (name.includes('product') || name.includes('hero')) return '"product"';
-  if (name.includes('tutorial') || name.includes('step') || name.includes('guide')) return '"product"';
-  
+
+  if (name.includes('logo') || name.includes('brand')) return 'product';
+  if (name.includes('ui') || name.includes('interface') || name.includes('button')) return 'product';
+  if (name.includes('product') || name.includes('hero')) return 'product';
+  if (name.includes('tutorial') || name.includes('step') || name.includes('guide')) return 'product';
+
   // Default category based on file type
-  if (['jpg', 'jpeg', 'png', 'webp'].includes(extension)) return '"product"';
-  if (['svg','ico'].includes(extension)) return '"product"';
-  
-  return '"product"'; // default
+  if (['jpg', 'jpeg', 'png', 'webp'].includes(extension)) return 'product';
+  if (['svg','ico'].includes(extension)) return 'product';
+
+  return 'product'; // default
 };
   const categories = ['all', 'product', 'ui', 'branding', 'tutorial'];
   const statuses = ['all', 'up-to-date', 'pending', 'conflict'];
@@ -347,7 +421,7 @@ const determineCategory = (filename: string, extension: string): string => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {filteredImages.map(image => (
                   <ImageCard
-                    key={image.globalId}
+                    key={`${image.globalId}-${image.name}`}
                     image={image}
                     onDelete={handleDelete}
                     onRestore={handleRestore}
@@ -361,7 +435,7 @@ const determineCategory = (filename: string, extension: string): string => {
               <div className="space-y-3">
                 {filteredImages.map(image => (
                   <ImageListItem
-                    key={image.globalId}
+                    key={`${image.globalId}-${image.name}`}
                     image={image}
                     onDelete={handleDelete}
                     onRestore={handleRestore}
@@ -389,7 +463,7 @@ const determineCategory = (filename: string, extension: string): string => {
                   <TableBody>
                     {filteredImages.map(image => (
                       <ImageTableRow
-                        key={image.globalId}
+                        key={`${image.globalId}-${image.name}`}
                         image={image}
                         onDelete={handleDelete}
                         onRestore={handleRestore}

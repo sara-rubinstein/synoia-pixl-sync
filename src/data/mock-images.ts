@@ -1,74 +1,7 @@
 import { ImageItem } from "@/types/image-library";
 
 export const mockImages: ImageItem[] = [
-  {
-    globalId: 100001,
-    name: "Hero Product Capsule",
-    description: "Main product image for the premium capsule line - China region",
-    originalPath: "/uploads/product-hero-capsule.jpg",
-    libraryFilePath: "/library/100001.jpg",
-    category: "product",
-    subcategory: "capsule",
-    tags: ["wish2go", "capsule", "china", "premium"],
-    imageWidth: 1920,
-    imageHeight: 1080,
-    hasAlphaChannel: false,
-    azureBlobUrl: "https://storage.blob.core.windows.net/images/100001.jpg",
-    cdnUrl: "https://cdn.example.com/100001.jpg",
-    localLastUpdatedUtc: "2024-09-27T10:30:00Z",
-    cloudLastUpdatedUtc: "2024-09-27T10:30:00Z",
-    createdDate: "2024-09-25T08:15:00Z",
-    isDeleted: false,
-    isActive: true,
-    syncStatus: "up-to-date",
-    fileSize: 2456789,
-    fileType: "image/jpeg",
-    thumbnailUrl: "https://images.unsplash.com/photo-1559181567-c3190ca9959b?w=400&h=300&fit=crop"
-  },
-  {
-    globalId: 100002,
-    name: "Device Interface Button",
-    description: "Primary action button for mobile interface",
-    originalPath: "/uploads/ui-button-primary.png",
-    libraryFilePath: "/library/100002.png",
-    category: "ui",
-    subcategory: "button",
-    tags: ["ui", "button", "mobile", "primary"],
-    imageWidth: 300,
-    imageHeight: 60,
-    hasAlphaChannel: true,
-    localLastUpdatedUtc: "2024-09-27T14:22:00Z",
-    cloudLastUpdatedUtc: "2024-09-27T12:22:00Z",
-    createdDate: "2024-09-26T16:45:00Z",
-    isDeleted: false,
-    isActive: true,
-    syncStatus: "pending",
-    fileSize: 15678,
-    fileType: "image/png",
-    thumbnailUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop"
-  },
-  {
-    globalId: 100003,
-    name: "Brand Logo Variant",
-    description: "Alternative brand logo for dark backgrounds",
-    originalPath: "/uploads/brand-logo-dark.svg",
-    libraryFilePath: "/library/100003.svg",
-    category: "branding",
-    subcategory: "icon",
-    tags: ["branding", "logo", "dark", "svg"],
-    imageWidth: 512,
-    imageHeight: 512,
-    hasAlphaChannel: true,
-    localLastUpdatedUtc: "2024-09-26T09:15:00Z",
-    cloudLastUpdatedUtc: "2024-09-27T11:30:00Z",
-    createdDate: "2024-09-20T14:20:00Z",
-    isDeleted: false,
-    isActive: true,
-    syncStatus: "conflict",
-    fileSize: 8924,
-    fileType: "image/svg+xml",
-    thumbnailUrl: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop"
-  },
+  
   {
     globalId: 100004,
     name: "Tutorial Step Screenshot",
@@ -90,7 +23,8 @@ export const mockImages: ImageItem[] = [
     syncStatus: "up-to-date",
     fileSize: 1897456,
     fileType: "image/png",
-    thumbnailUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=300&fit=crop"
+    thumbnailUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400&h=300&fit=crop",
+    appMetadata: undefined
   },
   {
     globalId: 100005,
@@ -111,29 +45,7 @@ export const mockImages: ImageItem[] = [
     syncStatus: "pending",
     fileSize: 3245678,
     fileType: "image/jpeg",
-    thumbnailUrl: "https://images.unsplash.com/photo-1605792657660-596af9009e82?w=400&h=300&fit=crop"
-  },
-  {
-    globalId: 100006,
-    name: "Archived Icon Set",
-    description: "Legacy icon set - archived but kept for reference",
-    originalPath: "/uploads/legacy-icons.png",
-    libraryFilePath: "/library/100006.png",
-    category: "ui",
-    subcategory: "icon",
-    tags: ["legacy", "icons", "archived"],
-    imageWidth: 1024,
-    imageHeight: 1024,
-    hasAlphaChannel: true,
-    azureBlobUrl: "https://storage.blob.core.windows.net/images/100006.png",
-    localLastUpdatedUtc: "2024-08-15T10:20:00Z",
-    cloudLastUpdatedUtc: "2024-08-15T10:20:00Z",
-    createdDate: "2024-08-15T10:20:00Z",
-    isDeleted: true,
-    isActive: false,
-    syncStatus: "up-to-date",
-    fileSize: 456789,
-    fileType: "image/png",
-    thumbnailUrl: "https://images.unsplash.com/photo-1618477247222-acbdb0e159b3?w=400&h=300&fit=crop"
+    thumbnailUrl: "https://images.unsplash.com/photo-1605792657660-596af9009e82?w=400&h=300&fit=crop",
+    appMetadata: undefined
   }
 ];
