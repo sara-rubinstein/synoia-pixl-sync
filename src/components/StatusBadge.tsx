@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: 'up-to-date' | 'pending' | 'conflict';
+  status: 'up-to-date' | 'pending' | 'conflict'|'editing' | 'error';
   showIcon?: boolean;
   size?: 'sm' | 'default';
 }
@@ -20,6 +20,11 @@ const statusConfig = {
   },
   'conflict': {
     label: 'Cloud Newer',
+    icon: AlertTriangle,
+    className: 'bg-status-error text-status-error-foreground border-status-error'
+  },
+  'editing': {
+    label: 'Editing',
     icon: AlertTriangle,
     className: 'bg-status-error text-status-error-foreground border-status-error'
   }

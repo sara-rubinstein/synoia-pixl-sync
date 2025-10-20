@@ -2,16 +2,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "./StatusBadge";
-import { Trash2, RotateCcw, ExternalLink, FileText } from "lucide-react";
+import { Trash2, RotateCcw, ExternalLink, FileText, Edit2Icon } from "lucide-react";
 import { ImageItem } from "@/types/image-library";
 
 interface ImageCardProps {
   image: ImageItem;
   onDelete: (id: number) => void;
   onRestore: (id: number) => void;
+  onEdit: (image: ImageItem) => void; // <-- Add this prop
+
 }
 
-export function ImageCard({ image, onDelete, onRestore }: ImageCardProps) {
+export function ImageCard({ image, onDelete, onRestore, onEdit }: ImageCardProps) {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
@@ -101,6 +103,14 @@ export function ImageCard({ image, onDelete, onRestore }: ImageCardProps) {
               <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
                 <FileText className="w-3 h-3" />
               </Button>
+              <Button
+  size="sm"
+  variant="ghost"
+  className="h-7 w-7 p-0"
+  onClick={() => onEdit(image)} // <-- Call onEdit when clicked
+>
+  <Edit2Icon className="w-3 h-3" />
+</Button>
             </div>
             
             <div>
@@ -124,6 +134,7 @@ export function ImageCard({ image, onDelete, onRestore }: ImageCardProps) {
                   <Trash2 className="w-3 h-3" />
                 </Button>
               )}
+              
             </div>
           </div>
         </div>

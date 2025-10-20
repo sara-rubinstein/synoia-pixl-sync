@@ -4,7 +4,7 @@ export interface ImageItem {
   description?: string;
   originalPath: string;
   libraryFilePath: string;
-  category?: 'product' | 'ui' | 'branding' | 'tutorial';
+  category?: string;
   subcategory?: 'capsule' | 'device' | 'button' | 'icon';
   tags?: string[];
   imageWidth: number;
@@ -17,7 +17,7 @@ export interface ImageItem {
   createdDate: string;
   isDeleted: boolean;
   isActive: boolean;
-  syncStatus: 'up-to-date' | 'pending' | 'conflict';
+  syncStatus: 'up-to-date' | 'pending' | 'conflict'|'editing' | 'error';
   fileSize?: number;
   fileType: string;
   thumbnailUrl: string;
@@ -26,7 +26,7 @@ export interface ImageItem {
   localStorageId?: string; // SQL Server record ID
   lastSyncAttempt?: string;
   syncError?: string;
-  file?: File; // <-- Add this line
+  file?: File; // the image file itself, used for store at azure blob
 
 }
 

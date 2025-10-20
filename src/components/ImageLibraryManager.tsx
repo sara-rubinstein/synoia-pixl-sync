@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo,useEffect } from 'react';
 import { Search, Filter, Upload, RefreshCw, Settings, Download } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,13 @@ import { ImageCard } from './ImageCard';
 import { ImageListItem } from './ImageListItem';
 import { ImageTableRow } from './ImageTableRow';
 import { StatusBadge } from './StatusBadge';
-import { DisplayMode, ImageItem } from '@/types/image-library';
+import { EditImageModal } from "./EditImageModel"; // Correct import
+import { AppMetadata, DisplayMode, ImageItem } from '@/types/image-library';
 import { mockImages } from '@/data/mock-images';
 import { useToast } from '@/hooks/use-toast';
+import { AppSettingsModal } from './AppSettingsModal';
+import { fetchCategories,fetchImages  } from '@/lib/images-api'; // ✅ new import
+
 
 export function ImageLibraryManager() {
   const { toast } = useToast();
@@ -24,8 +28,21 @@ export function ImageLibraryManager() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showDeleted, setShowDeleted] = useState(false);
-  const [images, setImages] = useState<ImageItem[]>(mockImages);
+  const [images, setImages] = useState<ImageItem[]>([]);
   const [showUpload, setShowUpload] = useState(false);
+  const [editingImage, setEditingImage] = useState<ImageItem | null>(null);
+  const [categories, setCategories] = useState<string[]>(['all']); // default "all" option
+const [showSettings, setShowSettings] = useState(false);
+const [appMetadata, setAppMetadata] = useState<AppMetadata>({
+  app: "APP1",
+  usageCode: "Main",
+  lang: "EN",
+  customTags: [],
+  targetPlatforms: ["web", "mobile", "desktop","linux"],
+  version: "1.0",
+});
+
+
 
   // Filter and search logic
   const filteredImages = useMemo(() => {
@@ -58,6 +75,53 @@ export function ImageLibraryManager() {
 
     return { total, pending, conflicts, deleted };
   }, [images]);
+  
+ useEffect(() => {
+  async function loadCategories() {
+    const data = await fetchCategories();
+    setCategories(['all', ...data]);
+  }
+  loadCategories();
+}, []);
+useEffect(() => {
+  async function loadImages() {
+    try {
+      const data = await fetchImages(appMetadata.app);
+
+      const mappedImages: ImageItem[] = data.map((item: any) => ({
+        globalId: item.globalId,
+        name: item.name,
+        description: item.description ?? "",
+        category: item.category ?? "",
+        tags: item.tags ?? [],
+        azureBlobUrl: item.azureBlobUrl,
+        cdnUrl: undefined,
+        imageWidth: item.imageWidth ?? 0,
+        imageHeight: item.imageHeight ?? 0,
+        hasAlphaChannel: false,
+        localLastUpdatedUtc: item.cloudLastUpdatedUtc ?? new Date().toISOString(),
+        cloudLastUpdatedUtc: item.cloudLastUpdatedUtc,
+        createdDate: item.createdDate ?? new Date().toISOString(),
+        isDeleted: item.isDeleted ?? false,
+        isActive: true,
+        syncStatus: "up-to-date",
+        fileSize: item.fileSize,
+        fileType: item.fileType ?? "image/png",
+        thumbnailUrl: item.azureBlobUrl, // ✅ correct preview
+        appMetadata: item.appMetadata ?? {},
+      }));
+
+      setImages(mappedImages);
+    } catch (error) {
+      console.error("Error loading images:", error);
+    }
+  }
+
+  loadImages();
+}, [appMetadata.app]);
+
+  // Handle edit
+const handleEdit = (image: ImageItem) => setEditingImage(image);
 
   // Handle file upload
   const handleFilesSelected = (files: File[]) => {
@@ -152,8 +216,9 @@ const setNewImages=(files: File[])=>{
   // Handle sync
   const handleSync = async () => {
   const imagesToSync = images.filter(img => img.syncStatus === 'pending' && !img.isDeleted);
+  const deletedOrRestored = images.filter(img => img.syncStatus !== "pending"); // all non-new images
 
-  if (imagesToSync.length === 0) {
+  if (imagesToSync.length === 0 && deletedOrRestored.length === 0) {
     toast({
       title: "No Images to Sync",
       description: "All images are up to date.",
@@ -162,7 +227,7 @@ const setNewImages=(files: File[])=>{
   }
   
   try {
-    const azurelocalhostEndpoint = "http://localhost:7071/api/sync-image";
+    const azurelocalhostEndpoint = "http://localhost:7071/api/images/sync-image";
     
     // Upload images sequentially to ensure unique GlobalIds
     const results = [];
@@ -191,7 +256,7 @@ const setNewImages=(files: File[])=>{
           IsActive: img.isActive,
           FileSize: img.fileSize,
           FileType: img.fileType,
-          AppMetadata: img.appMetadata,
+          AppMetadata: appMetadata, // ✅ use shared global object here
           Description: img.description
         })
       );
@@ -220,8 +285,27 @@ const setNewImages=(files: File[])=>{
       });
     }
     console.log('All results:', results);
+ // 🟢 Update deleted/restored images in Azure SQL
+    const deletedSyncEndpoint = "http://localhost:7071/api/images/sync-deleted";
+    const deletePayload = {
+      items: images
+        .filter(img => img.syncStatus !== "pending")
+        .map(img => ({
+          globalId: img.globalId,
+          isDeleted: img.isDeleted,
+        })),
+    };
 
-    // Update all images with their new GlobalIds and blob URLs
+    if (deletePayload.items.length > 0) {
+      await fetch(deletedSyncEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(deletePayload),
+      });
+      console.log("✅ Deleted/restored images synced to Azure SQL");
+    }
+
+    // 🟢 Update local state
     setImages(prev =>
       prev.map(img => {
         const result = results.find(r => r.oldGlobalId === img.globalId);
@@ -231,17 +315,18 @@ const setNewImages=(files: File[])=>{
             globalId: result.newGlobalId,
             azureBlobUrl: result.azureBlobUrl,
             cloudLastUpdatedUtc: result.cloudLastUpdatedUtc,
-            syncStatus: "up-to-date" as const
+            syncStatus: "up-to-date",
           };
         }
-        return img;
+        return { ...img, syncStatus: "up-to-date" };
       })
     );
 
     toast({
       title: "Sync Complete",
-      description: `${imagesToSync.length} image(s) synced successfully.`,
+      description: `${imagesToSync.length} image(s) synced successfully, ${deletePayload.items.length} updates applied.`,
     });
+   
   } catch (error) {
     console.error('Sync error:', error);
     toast({
@@ -252,21 +337,6 @@ const setNewImages=(files: File[])=>{
   }
 };
   // Helper function to determine category based on filename/type
-const determineCategory = (filename: string, extension: string): string => {
-  const name = filename.toLowerCase();
-
-  if (name.includes('logo') || name.includes('brand')) return 'product';
-  if (name.includes('ui') || name.includes('interface') || name.includes('button')) return 'product';
-  if (name.includes('product') || name.includes('hero')) return 'product';
-  if (name.includes('tutorial') || name.includes('step') || name.includes('guide')) return 'product';
-
-  // Default category based on file type
-  if (['jpg', 'jpeg', 'png', 'webp'].includes(extension)) return 'product';
-  if (['svg','ico'].includes(extension)) return 'product';
-
-  return 'product'; // default
-};
-  const categories = ['all', 'product', 'ui', 'branding', 'tutorial'];
   const statuses = ['all', 'up-to-date', 'pending', 'conflict'];
 
   return (
@@ -289,7 +359,7 @@ const determineCategory = (filename: string, extension: string): string => {
               <Upload className="w-4 h-4" />
               Upload
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setShowSettings(true)}>
               <Settings className="w-4 h-4" />
               Settings
             </Button>
@@ -425,6 +495,8 @@ const determineCategory = (filename: string, extension: string): string => {
                     image={image}
                     onDelete={handleDelete}
                     onRestore={handleRestore}
+                    onEdit={handleEdit} // <-- Pass the handler here
+    
                   />
                 ))}
               </div>
@@ -473,7 +545,37 @@ const determineCategory = (filename: string, extension: string): string => {
                 </Table>
               </div>
             )}
-
+{editingImage && (
+  <EditImageModal
+    image={editingImage}
+    onClose={() => setEditingImage(null)}
+    onSave={(updatedFields) => {
+      setImages(prev =>
+        prev.map(img =>
+          img.globalId === editingImage.globalId
+            ? {
+                ...img,
+                description: updatedFields.description,
+                category: updatedFields.category,
+                tags: updatedFields.tags,
+              }
+            : img
+        )
+      );
+      setEditingImage(null);
+    }}
+  />
+)}
+{showSettings && (
+  <AppSettingsModal
+    appMetadata={appMetadata}
+    onSave={(newMetadata) => {
+      setAppMetadata(newMetadata);
+      setShowSettings(false);
+    }}
+    onClose={() => setShowSettings(false)}
+  />
+)}
             {/* Empty State */}
             {filteredImages.length === 0 && (
               <div className="text-center py-12">
@@ -494,3 +596,5 @@ const determineCategory = (filename: string, extension: string): string => {
     </div>
   );
 }
+
+
