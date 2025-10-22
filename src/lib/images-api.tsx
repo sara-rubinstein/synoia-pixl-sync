@@ -1,5 +1,9 @@
+import { API_BASE } from "@/config";
+
+
+
 export async function fetchCategories(): Promise<string[]> {
-  const endpoint = "http://localhost:7071/api/images/categories";
+  const endpoint = `${API_BASE}/api/images/categories`;
 
   try {
     const response = await fetch(endpoint);
@@ -20,11 +24,124 @@ export async function fetchCategories(): Promise<string[]> {
   }
 }
 
-export async function fetchImages(app: string) {
-  const res = await fetch(`http://localhost:7071/api/images?app=${app}`);
-  if (!res.ok) throw new Error(`Failed to load images (${res.status})`);
-  const data = await res.json();
-console.log(data); // ✅ safe
-return data;
+
+
+// 🟢 Fetch tags
+export async function fetchTags(): Promise<string[]> {
+  try {
+    const response = await fetch(`${API_BASE}/api/images/tags`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    return [];
+  }
 }
 
+// 🟢 Create new tag
+export async function createTag(tag: string): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE}/api/images/tags`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag }),
+    });
+    if (!response.ok) throw new Error(`Failed to create tag (${response.status})`);
+  } catch (error) {
+    console.error("Error creating tag:", error);
+  }
+}
+export async function fetchImages(apps: string[] = []) {
+  // Join apps into comma-separated string
+  const query = apps.length > 0 ? `?apps=${encodeURIComponent(apps.join(','))}` : "";
+  const res = await fetch(`${API_BASE}/api/images${query}`);
+  if (!res.ok) throw new Error(`Failed to load images (${res.status})`);
+  const data = await res.json();
+  console.log(data);
+  return data;
+}
+export async function updateImage(globalId: string, data: {
+  description: string;
+  category: string;
+  tags: string[];
+}): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE}/api/images/${globalId}/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error(`Failed to update image (${response.status})`);
+  } catch (error) {
+    console.error("Error updating image:", error);
+  }
+}
+export async function syncImages(images: any[], appMetadata: any) {
+  const endpoint = `${API_BASE}/api/images/sync-image`;
+  const results: any[] = [];
+
+  for (const img of images) {
+    if (!img.file) {
+      console.warn(`Missing file for ${img.name}`);
+      continue;
+    }
+
+    const formData = new FormData();
+    formData.append("file", img.file, img.file.name);
+    formData.append(
+      "metadata",
+      JSON.stringify({
+        Name: img.name,
+        OriginalPath: img.originalPath,
+        LibraryFilePath: img.libraryFilePath,
+        Category: img.category,
+        Tags: img.tags,
+        ImageWidth: img.imageWidth,
+        ImageHeight: img.imageHeight,
+        HasAlphaChannel: img.hasAlphaChannel,
+        LocalLastUpdatedUtc: img.localLastUpdatedUtc,
+        CreatedDate: img.createdDate,
+        IsDeleted: img.isDeleted,
+        IsActive: img.isActive,
+        FileSize: img.fileSize,
+        FileType: img.fileType,
+        AppMetadata: appMetadata,
+        Description: img.description,
+      })
+    );
+
+    const res = await fetch(endpoint, { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Failed to sync image ${img.name}`);
+
+    const result = await res.json();
+    results.push({
+      oldGlobalId: img.globalId,
+      newGlobalId: result.metadata.GlobalId,
+      azureBlobUrl: result.metadata.AzureBlobUrl,
+      cloudLastUpdatedUtc: result.metadata.CloudLastUpdatedUtc,
+    });
+  }
+
+  return results;
+}
+
+// 🟢 Sync deleted/restored images
+export async function syncDeletedImages(images: any[]) {
+  const endpoint = `${API_BASE}/api/images/sync-deleted`;
+  const items = images.map(img => ({
+    globalId: img.globalId,
+    isDeleted: img.isDeleted,
+  }));
+
+  if (items.length === 0) return 0; // 🟢 nothing to sync
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+
+  if (!res.ok) throw new Error(`Failed to sync deleted images (${res.status})`);
+  return items.length; // 🟢 return count of synced items
+
+}

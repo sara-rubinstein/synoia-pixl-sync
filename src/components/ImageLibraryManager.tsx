@@ -18,7 +18,12 @@ import { AppMetadata, DisplayMode, ImageItem } from '@/types/image-library';
 import { mockImages } from '@/data/mock-images';
 import { useToast } from '@/hooks/use-toast';
 import { AppSettingsModal } from './AppSettingsModal';
-import { fetchCategories,fetchImages  } from '@/lib/images-api'; // ✅ new import
+import { fetchCategories,fetchImages,syncImages,syncDeletedImages  } from '@/lib/images-api'; // ✅ new import
+import * as exifr from 'exifr';
+import { API_BASE } from "@/config";
+import { SyncButton } from "./SyncButton";
+
+
 
 
 export function ImageLibraryManager() {
@@ -34,9 +39,9 @@ export function ImageLibraryManager() {
   const [categories, setCategories] = useState<string[]>(['all']); // default "all" option
 const [showSettings, setShowSettings] = useState(false);
 const [appMetadata, setAppMetadata] = useState<AppMetadata>({
-  app: "APP1",
+  apps: ["Cosmetician"],
   usageCode: "Main",
-  lang: "EN",
+  langs: ["EN"],
   customTags: [],
   targetPlatforms: ["web", "mobile", "desktop","linux"],
   version: "1.0",
@@ -51,7 +56,8 @@ const [appMetadata, setAppMetadata] = useState<AppMetadata>({
       const matchesSearch = searchQuery === '' || 
         image.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         image.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        image.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+              (Array.isArray(image.tags) &&
+              image.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
 
       // Category filter
       const matchesCategory = categoryFilter === 'all' || image.category === categoryFilter;
@@ -86,7 +92,7 @@ const [appMetadata, setAppMetadata] = useState<AppMetadata>({
 useEffect(() => {
   async function loadImages() {
     try {
-      const data = await fetchImages(appMetadata.app);
+     const data = await fetchImages(appMetadata.apps); // pass full array now
 
       const mappedImages: ImageItem[] = data.map((item: any) => ({
         globalId: item.globalId,
@@ -118,7 +124,7 @@ useEffect(() => {
   }
 
   loadImages();
-}, [appMetadata.app]);
+}, [appMetadata.apps]);
 
   // Handle edit
 const handleEdit = (image: ImageItem) => setEditingImage(image);
@@ -133,64 +139,59 @@ const handleEdit = (image: ImageItem) => setEditingImage(image);
     setNewImages(files);
     setShowUpload(false);
   };
-const setNewImages=(files: File[])=>{
-// Process each file and create ImageItem objects
-  const newImages = files.map((file, index) => {
-    // Generate a unique global ID (you might want to use a proper UUID library)
-   // Generate unique temporary negative IDs to avoid conflicts
-    const globalId = -(Date.now() + index);
-    // Create object URL for preview and thumbnail
-    const previewUrl = URL.createObjectURL(file);
-    
-    // Extract file info
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
-    const category = 'product';//determineCategory(file.name, fileExtension); // Helper function
-    const currentDate = new Date().toISOString();
-    // Default metadata structure
+
+
+  const setNewImages = async (files: File[]) => {
+  const newImages = await Promise.all(
+    files.map(async (file, index) => {
+      const { width, height } = await getImageDimensionsWithFallback(file); // ✅ use EXIF + fallback
+
+      const globalId = -(Date.now() + index).toString();
+      const previewUrl = URL.createObjectURL(file);
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      const category = 'Products';
+      const currentDate = new Date().toISOString();
+
       const defaultMetadata = {
-        app: 'APP1', // Default app
-        usageCode: "Main",
-        lang: 'EN',
-        customTags: [category, 'uploaded'],
+        apps: ['Cosmetician'],
+        usageCode: 'Main',
+        langs: ['EN'],
+        customTags: [],
         targetPlatforms: ['web'],
         version: '1.0'
       };
-    // Check if image has alpha channel (basic check)
-    const hasAlpha = ['png', 'gif', 'webp'].includes(fileExtension);
-    
-    return {
-      globalId,
-      name: file.name.replace(/\.[^/.]+$/, ""), // Remove extension from display name
-      description: `Uploaded ${new Date().toLocaleDateString()}`,
-      // Store whatever information is available from the File object
-      originalPath: file.name,  // Just the filename - this is all you can get
-      libraryFilePath: `/library/${file.name}`, // Will be set after cloud sync
-      category,
-      //subcategory: determineSubcategory(file.name, category), // Helper function
-      tags: [category, 'uploaded'],
-      imageWidth: (file as any).size?.width ?? 0, // Will be updated after image loads
-      imageHeight: (file as any).size?.height ?? 0, // Will be updated after image loads
-      hasAlphaChannel: hasAlpha,
-      azureBlobUrl: undefined, // Will be set after cloud sync
-      cdnUrl: undefined, // Will be set after cloud sync
-      localLastUpdatedUtc: currentDate,
-      cloudLastUpdatedUtc: undefined, // Will be set after cloud sync
-      createdDate: currentDate,
-      isDeleted: false,
-      isActive: true,
-      syncStatus: 'pending' as const, // New uploads start as pending
-      fileSize: file.size,
-      fileType: file.type || `image/${fileExtension}`,
-      thumbnailUrl: previewUrl ,// Using same URL for thumbnail initially
-      appMetadata:defaultMetadata,
-      file:file
-    } satisfies ImageItem; // Use satisfies instead of as for better type checking
-  });
 
-  // Add new images to the state
-  setImages(prev => [...newImages, ...prev]); // Add new images at the beginning
+      const hasAlpha = ['png', 'gif', 'webp'].includes(fileExtension);
 
+      return {
+        globalId,
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        description: `Uploaded ${new Date().toLocaleDateString()}`,
+        originalPath: file.name,
+        libraryFilePath: `W:/SYNOIA/Library Images/${file.name}`,
+        category,
+        tags: [],
+        imageWidth: width,      // ✅ real width from EXIF or fallback
+        imageHeight: height,    // ✅ real height from EXIF or fallback
+        hasAlphaChannel: hasAlpha,
+        azureBlobUrl: undefined,
+        cdnUrl: undefined,
+        localLastUpdatedUtc: currentDate,
+        cloudLastUpdatedUtc: undefined,
+        createdDate: currentDate,
+        isDeleted: false,
+        isActive: true,
+        syncStatus: 'pending' as const,
+        fileSize: file.size,
+        fileType: file.type || `image/${fileExtension}`,
+        thumbnailUrl: previewUrl,
+        appMetadata: appMetadata || defaultMetadata,
+        file
+      } satisfies ImageItem;
+    })
+  );
 
+  setImages(prev => [...newImages, ...prev]);
 };
   // Handle delete/restore
   const handleDelete = (id: number) => {
@@ -227,88 +228,22 @@ const setNewImages=(files: File[])=>{
   }
   
   try {
-    const azurelocalhostEndpoint = "http://localhost:7071/api/images/sync-image";
-    
-    // Upload images sequentially to ensure unique GlobalIds
-    const results = [];
-    
-    for (const img of imagesToSync) {
-      if (!img.file) {
-        throw new Error(`No file found for image ${img.globalId}`);
-      }
-      
-      const formData = new FormData();
-      formData.append("file", img.file, img.file.name);
-      formData.append(
-        "metadata",
-        JSON.stringify({
-          Name: img.name,
-          OriginalPath: img.originalPath,
-          LibraryFilePath: img.libraryFilePath,
-          Category: img.category,
-          Tags: img.tags,
-          ImageWidth: img.imageWidth,
-          ImageHeight: img.imageHeight,
-          HasAlphaChannel: img.hasAlphaChannel,
-          LocalLastUpdatedUtc: img.localLastUpdatedUtc,
-          CreatedDate: img.createdDate,
-          IsDeleted: img.isDeleted,
-          IsActive: img.isActive,
-          FileSize: img.fileSize,
-          FileType: img.fileType,
-          AppMetadata: appMetadata, // ✅ use shared global object here
-          Description: img.description
-        })
-      );
+       const uploadResults = await syncImages(imagesToSync, appMetadata);
+    console.log("Upload results:", uploadResults);
 
-      console.log(`Uploading image: ${img.name}`);
-      
-      const response = await fetch(azurelocalhostEndpoint, {
-        method: "POST",
-        body: formData,
-      });
+    const deletedCount = await syncDeletedImages(deletedOrRestored);
+    console.log("Deleted/restored images synced.");
 
-      if (!response.ok) {
-        const msg = await response.text().catch(() => "");
-        throw new Error(`Failed to sync image ${img.name}. ${response.status} ${msg}`);
-      }
+    toast({
+      title: "Sync Complete",
+      description: `${uploadResults.length} image(s) synced, ${deletedCount} deleted/restored.`,
+    });
 
-      const result = await response.json();
-      console.log(`Received result for ${img.name}:`, result);
-      
-      results.push({
-        fileName: img.name,  // ✅ Use file name as unique identifier
-        oldGlobalId: img.globalId,
-        newGlobalId: result.metadata.GlobalId,
-        azureBlobUrl: result.metadata.AzureBlobUrl,
-        cloudLastUpdatedUtc: result.metadata.CloudLastUpdatedUtc
-      });
-    }
-    console.log('All results:', results);
- // 🟢 Update deleted/restored images in Azure SQL
-    const deletedSyncEndpoint = "http://localhost:7071/api/images/sync-deleted";
-    const deletePayload = {
-      items: images
-        .filter(img => img.syncStatus !== "pending")
-        .map(img => ({
-          globalId: img.globalId,
-          isDeleted: img.isDeleted,
-        })),
-    };
-
-    if (deletePayload.items.length > 0) {
-      await fetch(deletedSyncEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(deletePayload),
-      });
-      console.log("✅ Deleted/restored images synced to Azure SQL");
-    }
 
     // 🟢 Update local state
     setImages(prev =>
       prev.map(img => {
-        const result = results.find(r => r.oldGlobalId === img.globalId);
+        const result = uploadResults.find(r => r.oldGlobalId === img.globalId);
         if (result) {
           return {
             ...img,
@@ -324,7 +259,7 @@ const setNewImages=(files: File[])=>{
 
     toast({
       title: "Sync Complete",
-      description: `${imagesToSync.length} image(s) synced successfully, ${deletePayload.items.length} updates applied.`,
+      description: `${imagesToSync.length} image(s) synced successfully, ${deletedCount} updates applied.`,
     });
    
   } catch (error) {
@@ -336,6 +271,29 @@ const setNewImages=(files: File[])=>{
     });
   }
 };
+// 🟢 Get image dimensions via EXIF or fallback to natural dimensions
+async function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// 🟢 Try EXIF first, fallback to browser-detected dimensions
+async function getImageDimensionsWithFallback(file: File): Promise<{ width: number; height: number }> {
+  try {
+    const exif = await exifr.parse(file, ['ImageWidth', 'ImageHeight']);
+    if (exif?.ImageWidth && exif?.ImageHeight) {
+      return { width: exif.ImageWidth, height: exif.ImageHeight };
+    }
+  } catch (err) {
+    console.warn('⚠️ EXIF parse failed:', err);
+  }
+  return getImageDimensions(file);
+}
+
   // Helper function to determine category based on filename/type
   const statuses = ['all', 'up-to-date', 'pending', 'conflict'];
 
@@ -351,10 +309,8 @@ const setNewImages=(files: File[])=>{
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleSync} className="gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Sync
-            </Button>
+            <SyncButton onSync={handleSync} />
+
             <Button onClick={() => setShowUpload(!showUpload)} className="gap-2">
               <Upload className="w-4 h-4" />
               Upload

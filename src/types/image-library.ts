@@ -41,13 +41,15 @@ export interface ImagePlacement {
 }
 
 export interface AppMetadata {
-  app: string; // APP1, APP2, etc.
+  apps: string[];
+  langs: string[];
   usageCode: string;
-  lang: 'EN' | 'HE' | 'CN' | string;
-  customTags: string[];
-  targetPlatforms?: string[];
   version?: string;
+  customTags: string[];
+  targetPlatforms: string[];
 }
+
+
 
 export interface SyncRequest {
   imageId: number;

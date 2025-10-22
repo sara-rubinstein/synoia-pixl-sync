@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "./StatusBadge";
 import { Trash2, RotateCcw, ExternalLink, FileText, Edit2Icon } from "lucide-react";
 import { ImageItem } from "@/types/image-library";
+import { openImagePreview } from "@/components/ImagePreview";
+
 
 interface ImageCardProps {
   image: ImageItem;
@@ -97,16 +99,28 @@ export function ImageCard({ image, onDelete, onRestore, onEdit }: ImageCardProps
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex gap-1">
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+  <Button
+  variant="ghost"
+  size="sm"
+  className="h-7 w-7 p-0"
+   onClick={() => {
+    const url = image.azureBlobUrl || image.thumbnailUrl;
+    if (!url) return alert("No image available for preview.");
+    openImagePreview(url, image.name);
+  }}
+  title="Preview Image"
+>
+  <ExternalLink className="w-3 h-3" />
+</Button>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="view metadata"   onClick={() => alert(JSON.stringify(image.appMetadata, null, 2))}
+>
                 <FileText className="w-3 h-3" />
               </Button>
               <Button
   size="sm"
   variant="ghost"
   className="h-7 w-7 p-0"
+  title="edit properties"
   onClick={() => onEdit(image)} // <-- Call onEdit when clicked
 >
   <Edit2Icon className="w-3 h-3" />

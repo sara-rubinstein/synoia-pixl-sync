@@ -3,8 +3,13 @@ import Select from "react-select";
 import AsyncCreatableSelect from "react-select/async-creatable";
 import { Button } from "@/components/ui/button";
 import { ImageItem } from "@/types/image-library";
+import { fetchCategories, fetchTags, createTag, updateImage } from "@/lib/images-api";
 
-export function EditImageModal({ image, onClose, onSave }: {
+export function EditImageModal({
+  image,
+  onClose,
+  onSave,
+}: {
   image: ImageItem;
   onClose: () => void;
   onSave: (fields: { description: string; category: string; tags: string[] }) => void;
@@ -17,18 +22,16 @@ export function EditImageModal({ image, onClose, onSave }: {
     (image.tags || []).map(tag => ({ label: tag, value: tag }))
   );
 
-  // Fetch categories and tags from backend
+  // 🟢 Load categories and tags
   useEffect(() => {
-    fetch("http://localhost:7071/api/images/categories")
-      .then(res => res.json())
-      .then(data => setCategories(data));
-
-    fetch("http://localhost:7071/api/images/tags")
-      .then(res => res.json())
-      .then(data => setTags(data.map((tag: string) => ({ label: tag, value: tag }))));
+    (async () => {
+      const [cats, tagsList] = await Promise.all([fetchCategories(), fetchTags()]);
+      setCategories(cats);
+      setTags(tagsList.map(tag => ({ label: tag, value: tag })));
+    })();
   }, []);
 
-  // Autocomplete tag loader
+  // 🟢 Async tag search
   const loadTagOptions = (inputValue: string, callback: any) => {
     const filtered = tags.filter(tag =>
       tag.label.toLowerCase().includes(inputValue.toLowerCase())
@@ -36,30 +39,27 @@ export function EditImageModal({ image, onClose, onSave }: {
     callback(filtered);
   };
 
-  // Handle tag creation
+  // 🟢 Create new tag
   const handleCreateTag = async (inputValue: string) => {
-    // Create tag in backend
-    await fetch("http://localhost:7071/api/images/tags", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag: inputValue })
-    });
+    await createTag(inputValue);
     const newTag = { label: inputValue, value: inputValue };
     setTags(prev => [...prev, newTag]);
     setSelectedTags(prev => [...prev, newTag]);
   };
 
+  // 🟢 Save changes
   const handleSave = async () => {
-    // Update image
-    await fetch(`http://localhost:7071/api/images/${image.globalId}/update`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ description, selectedCategory, tags: selectedTags.map(t => t.value) })
+    await updateImage(image.globalId.toString(), {
+      description,
+      category: selectedCategory,
+      tags: selectedTags.map(t => t.value),
     });
-   
-    onSave({    description,
-    category: selectedCategory,
-    tags: selectedTags.map(t => t.value),});
+
+    onSave({
+      description,
+      category: selectedCategory,
+      tags: selectedTags.map(t => t.value),
+    });
   };
 
   return (
