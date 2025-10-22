@@ -94,6 +94,18 @@ The **Image Library Manager** is a complete React-based web application designed
 - Responsive UI with Tailwind-based design and Shadcn components.
 - Intuitive buttons and icons using **Lucide-react**.
 
+#### 11. **Local Storage Directory (W:/SYNOIA/Library Images/)**
+
+- All images are stored in the shared network directory **`W:/SYNOIA/Library Images/`**, which serves as the **staging area** for local image management.
+- Uploaded files are temporarily saved here before synchronization with the cloud (Azure Blob Storage).
+- This directory acts as the **bridge between local editing and backend synchronization**, ensuring that each image has a traceable local copy.
+
+#### 12. **Per-Image App Metadata**
+
+- Each image can now carry its own metadata, reflecting unique contexts such as different apps, languages, or platforms..
+- Sync always respects individual settings.
+- Maintains backward compatibility with existing global metadata behavior.
+
 ------
 
 ### 🧩 **Technical Overview**

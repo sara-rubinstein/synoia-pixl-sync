@@ -1,4 +1,5 @@
 import { API_BASE } from "@/config";
+import { AppMetadata } from "@/types/image-library";
 
 
 
@@ -64,6 +65,7 @@ export async function updateImage(globalId: string, data: {
   description: string;
   category: string;
   tags: string[];
+appMetadata: AppMetadata;
 }): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/api/images/${globalId}/update`, {
@@ -76,7 +78,7 @@ export async function updateImage(globalId: string, data: {
     console.error("Error updating image:", error);
   }
 }
-export async function syncImages(images: any[], appMetadata: any) {
+export async function syncImages(images: any[], globalAppMetadata: any) {
   const endpoint = `${API_BASE}/api/images/sync-image`;
   const results: any[] = [];
 
@@ -105,7 +107,7 @@ export async function syncImages(images: any[], appMetadata: any) {
         IsActive: img.isActive,
         FileSize: img.fileSize,
         FileType: img.fileType,
-        AppMetadata: appMetadata,
+        AppMetadata: img.appMetadata || globalAppMetadata,
         Description: img.description,
       })
     );

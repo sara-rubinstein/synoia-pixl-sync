@@ -514,6 +514,7 @@ async function getImageDimensionsWithFallback(file: File): Promise<{ width: numb
                 description: updatedFields.description,
                 category: updatedFields.category,
                 tags: updatedFields.tags,
+                appMetadata: updatedFields.appMetadata,
               }
             : img
         )
