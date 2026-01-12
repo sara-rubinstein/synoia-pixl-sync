@@ -1,5 +1,5 @@
 import { API_BASE } from "@/config";
-import { AppMetadata } from "@/types/image-library";
+import { AppMetadata, ProductDto } from "@/types/image-library";
 
 
 
@@ -65,7 +65,8 @@ export async function updateImage(globalId: string, data: {
   description: string;
   category: string;
   tags: string[];
-appMetadata: AppMetadata;
+  appMetadata: AppMetadata;
+  linkedProductGlobalIds: string[];
 }): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/api/images/${globalId}/update`, {
@@ -109,12 +110,17 @@ export async function syncImages(images: any[], globalAppMetadata: any) {
         FileType: img.fileType,
         AppMetadata: img.appMetadata || globalAppMetadata,
         Description: img.description,
+        LinkedProductGlobalIds: (img.linkedProductGlobalIds ?? []).map(String),
+
       })
     );
 
     const res = await fetch(endpoint, { method: "POST", body: formData });
-    if (!res.ok) throw new Error(`Failed to sync image ${img.name}`);
-
+ if (!res.ok) {
+      const text = await res.text();     // <— read error from Function
+      console.error("sync-image backend error:", res.status, text);
+      throw new Error(`Failed to sync image ${img.name}: ${res.status} ${text}`);
+    }
     const result = await res.json();
     results.push({
       oldGlobalId: img.globalId,
@@ -146,4 +152,24 @@ export async function syncDeletedImages(images: any[]) {
   if (!res.ok) throw new Error(`Failed to sync deleted images (${res.status})`);
   return items.length; // 🟢 return count of synced items
 
+}
+export async function fetchProducts(search?: string): Promise<ProductDto[]> {
+  const params = search ? `?search=${encodeURIComponent(search)}` : "";
+  const res = await fetch(`${API_BASE}/api/products${params}`);
+  if (!res.ok) throw new Error(`Failed to fetch products (${res.status})`);
+  return res.json();
+}
+
+export async function fetchAllProducts(): Promise<ProductDto[]> {
+
+  const res = await fetch(`${API_BASE}/api/get-products`);
+  if (!res.ok) throw new Error(`Failed to fetch all products (${res.status})`);
+  return res.json();
+}
+
+export async function fetchImageLinkedProducts(imageGlobalId: string): Promise<string[]> {
+  const res = await fetch(`${API_BASE}/api/images/${imageGlobalId}/linked-products`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data.linkedProductGlobalIds) ? data.linkedProductGlobalIds : [];
 }

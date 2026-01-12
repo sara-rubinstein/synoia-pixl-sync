@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Select from "react-select";
+import AsyncSelect from "react-select/async"; // ADD
 import AsyncCreatableSelect from "react-select/async-creatable";
 import { Button } from "@/components/ui/button";
-import { ImageItem, AppMetadata } from "@/types/image-library";
-import { fetchCategories, fetchTags, createTag, updateImage } from "@/lib/images-api";
+import { ImageItem, AppMetadata, ProductDto } from "@/types/image-library";
+import { fetchCategories, fetchTags, createTag, updateImage, fetchProducts, fetchImageLinkedProducts, } from "@/lib/images-api";
 import { AppSettingsModal } from "@/components/AppSettingsModal";
 
 export function EditImageModal({
@@ -18,12 +19,19 @@ export function EditImageModal({
     category: string;
     tags: string[];
     appMetadata: AppMetadata;
+    linkedProductGlobalIds: string[]; 
   }) => void;
 }) {
+    type ProductOption = {
+label: string; 
+value: string; // ProductGlobalID 
+ data: ProductDto;
+  };
   const [description, setDescription] = useState(image.description || "");
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(image.category || "");
   const [tags, setTags] = useState<{ label: string; value: string }[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [selectedTags, setSelectedTags] = useState<{ label: string; value: string }[]>(
     (image.tags || []).map(tag => ({ label: tag, value: tag }))
   );
@@ -52,6 +60,61 @@ export function EditImageModal({
     })();
   }, []);
 
+useEffect(() => {
+  let cancelled = false;
+
+  (async () => {
+    // 1) fetch linked product ids for this image
+    const linkedIds = await fetchImageLinkedProducts(String(image.globalId));
+        
+
+    if (cancelled) return;
+
+    if (!linkedIds.length) {
+      setSelectedProducts([]);
+      return;
+    }
+
+    // 2) fetch products list and match
+    const allProducts = await fetchProducts();
+    if (cancelled) return;
+
+    const wanted = new Set(linkedIds.map(String));
+    const matched = allProducts.filter(p => wanted.has(String(p.globalId)));
+
+    setSelectedProducts(
+      matched.map(p => ({
+        label: `${p.moduleID} - ${p.moduleName}`,
+        value: String(p.globalId),
+        data: p,
+      }))
+    );
+  })();
+
+  return () => { cancelled = true; };
+}, [image.globalId]);
+
+    
+  const loadProductOptions = async (
+  inputValue: string
+): Promise<ProductOption[]> => {
+  try {
+    const products = await fetchProducts(inputValue);
+    console.log(products.map(p => ({ globalId: p.globalId, productID: p.productID, moduleID: p.moduleID })));
+
+    return products.map(p => {
+      const globalId = p.globalId ?? p.productID;
+      return {
+        label: `${p.moduleID} - ${p.moduleName}`,
+        value:  String(globalId),     // force string
+        data: p,
+      };
+    });
+  } catch (error) {
+    console.error("Error loading products:", error);
+    return [];
+  }
+};
   // 🟢 Async tag search
   const loadTagOptions = (inputValue: string, callback: any) => {
     const filtered = tags.filter(tag =>
@@ -71,10 +134,11 @@ export function EditImageModal({
   // 🟢 Save changes
   const handleSave = async () => {
     await updateImage(image.globalId.toString(), {
-      description,
+       description,
       category: selectedCategory,
       tags: selectedTags.map(t => t.value),
-      appMetadata: appMetadata,
+      appMetadata,
+      linkedProductGlobalIds: selectedProducts.map(p => p.value),
     });
 
     onSave({
@@ -82,6 +146,8 @@ export function EditImageModal({
       category: selectedCategory,
       tags: selectedTags.map(t => t.value),
       appMetadata,
+      linkedProductGlobalIds: selectedProducts.map(p => p.value),
+
     });
   };
 
@@ -108,6 +174,24 @@ export function EditImageModal({
           value={categories.length ? { label: selectedCategory, value: selectedCategory } : null}
           onChange={option => setSelectedCategory(option?.value || "")}
           isClearable
+        />
+      </div>
+      {/* Linked Products (PN) */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-1">
+          Linked Products (PN)
+        </label>
+        <AsyncSelect
+          isMulti
+          hideSelectedOptions={false}
+          cacheOptions
+          defaultOptions
+          loadOptions={loadProductOptions}
+          value={selectedProducts}
+          onChange={options =>
+            setSelectedProducts(options ? (options as ProductOption[]) : [])
+          }
+          placeholder="Search products by PN or name..."
         />
       </div>
 

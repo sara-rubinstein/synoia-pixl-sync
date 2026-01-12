@@ -27,9 +27,21 @@ export interface ImageItem {
   lastSyncAttempt?: string;
   syncError?: string;
   file?: File; // the image file itself, used for store at azure blob
-
+  linkedProductGlobalIds?: string[]; //list of ProductGlobalID values
 }
-
+export interface ProductDto {
+ globalId: string;
+  productID: number;
+  moduleID: number;
+  moduleName: string;
+  typeID: number | null;
+  subTypeID: number | null;
+  capsuleID: number | null;
+  numBoxItems: number | null;
+  moduleOem: number | null;
+  withoutExpiration: boolean;
+  placedInMainWarehouse: boolean;
+}
 export type DisplayMode = 'grid' | 'list' | 'table';
 
 export interface ImagePlacement {
