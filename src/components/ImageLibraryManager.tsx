@@ -186,7 +186,8 @@ const handleEdit = (image: ImageItem) => setEditingImage(image);
         fileType: file.type || `image/${fileExtension}`,
         thumbnailUrl: previewUrl,
         appMetadata: appMetadata || defaultMetadata,
-        file
+        file,
+        linkedProductGlobalIds: [],
       } satisfies ImageItem;
     })
   );
@@ -515,6 +516,8 @@ async function getImageDimensionsWithFallback(file: File): Promise<{ width: numb
                 category: updatedFields.category,
                 tags: updatedFields.tags,
                 appMetadata: updatedFields.appMetadata,
+                linkedProductGlobalIds: updatedFields.linkedProductGlobalIds, // ✅ add
+
               }
             : img
         )
