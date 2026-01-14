@@ -106,6 +106,11 @@ The **Image Library Manager** is a complete React-based web application designed
 - Sync always respects individual settings.
 - Maintains backward compatibility with existing global metadata behavior.
 
+#### 13. **Linked Products Per-Image**
+- Each image can be linked to **one or more products** in the system.
+- Product links are managed **per image** and edited through the **EditImageModal**.
+- This feature enables clear traceability between visual assets and the products they represent.
+
 ------
 
 ### 🧩 **Technical Overview**
