@@ -47,7 +47,7 @@ The **Image Library Manager** is a complete React-based web application designed
 #### 4. **Application Metadata Management**
 
 - The **AppSettingsModal** enables defining contextual metadata that applies to the whole library:
-  - **Applications:** (Cosmetician, E-commerce, B2B, B2C)
+  - **Applications:** (Shopify, E-commerce, B2B, B2C)
   - **Languages:** (EN, HE, AR, etc.)
   - **Target Platforms:** (web, mobile, desktop, linux, etc.)
   - **Custom Tags**: added manually or selected from predefined sets.

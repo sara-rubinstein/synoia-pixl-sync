@@ -40,7 +40,7 @@ export function AppSettingsModal({ appMetadata, onSave, onClose }: Props) {
   const [isAddingCustomTag, setIsAddingCustomTag] = useState(false);
 
   // ✅ Predefined lists
-  const availableApps = ["Cosmetician", "E-commerce", "B2B", "B2C"];
+  const availableApps = ["Shopify", "E-commerce", "B2B", "B2C"];
   const availableLangs = ["EN", "HE", "AR", "CN", "ES", "FR", "RU", "DE"];
   const availablePlatforms = [
     "web",

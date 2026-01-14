@@ -39,7 +39,7 @@ export function ImageLibraryManager() {
   const [categories, setCategories] = useState<string[]>(['all']); // default "all" option
 const [showSettings, setShowSettings] = useState(false);
 const [appMetadata, setAppMetadata] = useState<AppMetadata>({
-  apps: ["Cosmetician"],
+  apps: ["Shopify"],
   usageCode: "Main",
   langs: ["EN"],
   customTags: [],
@@ -153,7 +153,7 @@ const handleEdit = (image: ImageItem) => setEditingImage(image);
       const currentDate = new Date().toISOString();
 
       const defaultMetadata = {
-        apps: ['Cosmetician'],
+        apps: ['Shopify'],
         usageCode: 'Main',
         langs: ['EN'],
         customTags: [],

@@ -68,7 +68,7 @@ export default function TagManager({ currentTags, appMetadata, onTagsChange, onM
                 <SelectValue placeholder="Select App" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Cosmetician">Cosmetician</SelectItem>
+                <SelectItem value="Shopify">Shopify</SelectItem>
                 <SelectItem value="E-commerce">E-commerce</SelectItem>
                 <SelectItem value="B2B">B2B</SelectItem>
                 <SelectItem value="B2C">B2C</SelectItem>
