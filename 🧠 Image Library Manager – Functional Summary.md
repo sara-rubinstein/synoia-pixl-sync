@@ -132,3 +132,4 @@ The **Image Library Manager** is a complete React-based web application designed
 4. **Edit:** Modify descriptions, categories, or tags.
 5. **Sync:** Upload all pending or deleted images to the cloud.
 6. **Review:** Monitor synchronization status and metadata in multiple layouts.
+7. **Services:** this site run at the IIS service at http://192.168.168.69:8080/ 
